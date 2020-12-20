@@ -1,0 +1,10 @@
+# telegram bot token
+token: "example-token"
+# list of user IDs that are allowed to issue commands to the bot (/status, /deactivate, /activate)
+valid_users: 
+  - telegramid
+# path to a file to keep state, e.g: group to use for notifications
+state_file: /path/to/state.file.db
+# optional configs
+smtp_port: 8025
+smtp_listen: '0.0.0.0'

@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  bot:
+    build: .
+    network_mode: host
+    ports:
+      - "8025:8025"
+    volumes:
+      - "./config:/config"
+      - "./data:/data"
+    restart: always
