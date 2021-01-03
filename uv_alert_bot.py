@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import time
 import logging
 import shelve
 
@@ -35,11 +34,11 @@ class UnifiAlertMessage(Message):
         for part in parts:
             image = BytesIO(base64.decodebytes(
                 part.get_payload().encode('utf-8')))
-            self.bot.sendPhoto(image)
+            self.bot.sendPhoto(image, message['subject'])
 
     async def smtpd_main(self, hostname, port):
-        cont = Controller(self, hostname=hostname, port=port)
-        cont.start()
+        controller = Controller(self, hostname=hostname, port=port)
+        controller.start()
 
 
 class AlertBot:
@@ -59,39 +58,39 @@ class AlertBot:
             self.loop.create_task(self.bot.sendMessage(
                 self.state.get('group')['id'], message))
 
-    def sendPhoto(self, image):
+    def sendPhoto(self, image, caption):
         self.loop.create_task(self.bot.sendPhoto(
-            self.state.get('group')['id'], image))
+            self.state.get('group')['id'], image, caption))
 
-    async def handle(self, msg):
-        content_type, chat_type, chat_id = telepot.glance(msg)
+    async def handle(self, message):
+        content_type, chat_type, chat_id = telepot.glance(message)
         logging.info("Message received: content: %s, type: %s, chat_id: %s, "
-                     "msg: %s", content_type, chat_type, chat_id, msg)
-        user = msg['from']['id']  # was username, some users don't have one
+                     "msg: %s", content_type, chat_type, chat_id, message)
+        user = message['from']['id']  # was username, some users don't have one
         if user not in self.valid_users:
             logging.warning("Message from UNKNOWN user: %s, content: %s, type:"
                             " %s, chat_id: %s, msg: %s", user, content_type,
-                            chat_type, chat_id, msg)
+                            chat_type, chat_id, message)
             return
-        if 'text' not in msg:
-            logging.debug("Ignoring message: %s", msg)
+        if 'text' not in message:
+            logging.debug("Ignoring message: %s", message)
             return
-        if chat_type == 'group' and msg['text'] == '/start':
+        if chat_type == 'group' and message['text'] == '/start':
             group = self.state.get('group')
             if group:
                 logging.warning("Already bound to a group: %s", group['title'])
                 if group['id'] == chat_id:
                     await self.bot.sendMessage(chat_id, "Already using this group")
             else:
-                self.state['group'] = msg['chat']
+                self.state['group'] = message['chat']
                 return
-        if msg['text'] in ['/e', '/enable']:
+        if message['text'] in ['/e', '/enable']:
             self.active = True
             self.state['active'] = self.active
-        elif msg['text'] in ['/d', '/disable']:
+        elif message['text'] in ['/d', '/disable']:
             self.active = False
             self.state['active'] = self.active
-        elif msg['text'] in ['/status']:
+        elif message['text'] in ['/status']:
             status = "The bot is active and sharing motion events" \
                 if self.active else "The bot is currently not sharing motion events"
             await self.bot.sendMessage(chat_id, status)
@@ -110,11 +109,9 @@ def main(config, state):
     smtp_listen = config.get('smtp_listen', '0.0.0.0')
     smtp_port = config.get('smtp_port', 8025)
 
-    # create smtpd task
     loop.create_task(email_handler.smtpd_main(smtp_listen, smtp_port))
-    # create bot task
-
     loop.create_task(MessageLoop(bot, alert_bot.handle).run_forever())
+
     logging.info("Bot and SMTP server starting...")
     loop.run_forever()
 
