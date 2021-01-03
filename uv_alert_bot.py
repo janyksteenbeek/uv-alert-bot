@@ -60,7 +60,7 @@ class AlertBot:
 
     def sendPhoto(self, image, caption):
         self.loop.create_task(self.bot.sendPhoto(
-            self.state.get('group')['id'], image, caption))
+            chat_id=self.state.get('group')['id'], photo=image, caption=caption))
 
     async def handle(self, message):
         content_type, chat_type, chat_id = telepot.glance(message)
